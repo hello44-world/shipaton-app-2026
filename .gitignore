@@ -1,0 +1,7 @@
+.DS_Store
+node_modules/
+.expo/
+backend/.env
+backend/wattguard.db
+mobile/android/
+mobile/ios/

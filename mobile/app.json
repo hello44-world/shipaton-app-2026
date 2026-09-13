@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "WattGuard",
+    "slug": "wattguard",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#1A202C"
+    },
+    "ios": {
+      "bundleIdentifier": "com.sukyna.wattguard",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.sukyna.wattguard",
+      "splash": {
+        "backgroundColor": "#1A202C"
+      }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "3d271048-e16a-41d7-8910-75ab11661bd9"
+      }
+    }
+  }
+}
