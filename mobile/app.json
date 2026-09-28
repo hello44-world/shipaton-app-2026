@@ -10,7 +10,10 @@
     },
     "ios": {
       "bundleIdentifier": "com.sukyna.wattguard",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.sukyna.wattguard",

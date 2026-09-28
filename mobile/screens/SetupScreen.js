@@ -1,25 +1,48 @@
 import { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, Switch, StyleSheet, ScrollView } from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
+import AppHeader from "../components/AppHeader";
+import { api } from "../services/api";
 
 export default function SetupScreen({ route, navigation }) {
-  const { username, zipCode } = route.params;
+  const { userId, username, latitude, longitude } = route.params;
   const [solarPlates, setSolarPlates] = useState("");
   const [hasBattery, setHasBattery] = useState(false);
   const [batteryCapacityWh, setBatteryCapacityWh] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  function handleContinue() {
-    navigation.navigate("Dashboard", {
-      username,
-      zipCode,
-      numSolarPlates: parseInt(solarPlates, 10) || 0,
-      hasSolar: (parseInt(solarPlates, 10) || 0) > 0,
-      hasBattery,
-      batteryCapacityWh: parseInt(batteryCapacityWh, 10) || 0,
-    });
+  async function handleContinue() {
+    const numSolarPlates = parseInt(solarPlates, 10) || 0;
+    const batteryWh = parseInt(batteryCapacityWh, 10) || 0;
+
+    setSaving(true);
+    setError("");
+    try {
+      await api.saveUserSetup(userId, {
+        num_solar_plates: numSolarPlates,
+        has_battery: hasBattery,
+        battery_capacity_wh: batteryWh,
+      });
+      navigation.navigate("AppliancesSetup", {
+        userId,
+        username,
+        latitude,
+        longitude,
+        numSolarPlates,
+        hasSolar: numSolarPlates > 0,
+        hasBattery,
+        batteryCapacityWh: batteryWh,
+      });
+    } catch (e) {
+      setError(e.message || "Couldn't save your setup — try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ padding: 24 }}>
+      <AppHeader />
       <Text style={styles.title}>Set up your system</Text>
       <Text style={styles.subtitle}>
         This tells WattGuard what it's working with — it won't ask again.
@@ -55,8 +78,10 @@ export default function SetupScreen({ route, navigation }) {
         </>
       )}
 
-      <TouchableOpacity style={styles.button} onPress={handleContinue}>
-        <Text style={styles.buttonText}>Go to dashboard</Text>
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      <TouchableOpacity style={styles.button} onPress={handleContinue} disabled={saving}>
+        {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Continue</Text>}
       </TouchableOpacity>
     </ScrollView>
   );
@@ -78,6 +103,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   row: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
+  error: { color: "#E53E3E", marginBottom: 12, textAlign: "center" },
   button: { backgroundColor: "#1A202C", borderRadius: 12, paddingVertical: 16, alignItems: "center", marginTop: 24 },
   buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
 });

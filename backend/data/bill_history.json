@@ -1,0 +1,20 @@
+[
+  {
+    "date": "2026-09-20T12:25:44.701954+00:00",
+    "units_kwh": 310,
+    "total_amount_usd": -18476,
+    "usage_by_appliance_hours": {}
+  },
+  {
+    "date": "2026-09-21T21:27:16.698374+00:00",
+    "units_kwh": 310,
+    "total_amount_usd": -18476,
+    "usage_by_appliance_hours": {}
+  },
+  {
+    "date": "2026-09-21T21:51:12.779361+00:00",
+    "units_kwh": 310,
+    "total_amount_usd": -18476,
+    "usage_by_appliance_hours": {}
+  }
+]

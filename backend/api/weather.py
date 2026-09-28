@@ -32,15 +32,34 @@ def classify_condition(code: int) -> str:
     return WMO_CONDITIONS.get(code, "unknown")
 
 
+def classify_solar_strength(ghi):
+    """
+    GHI (Global Horizontal Irradiance, W/m^2) is the real amount of usable
+    sunlight hitting a flat surface right now — this is what actually
+    drives how much power the panels can generate, more accurate than
+    just reading "cloudy" vs "clear" off the weather code.
+    """
+    if ghi is None:
+        return "unknown"
+    if ghi >= 400:
+        return "strong"
+    elif ghi >= 100:
+        return "moderate"
+    elif ghi > 0:
+        return "weak"
+    return "none"
+
+
 @weather_bp.route("", methods=["GET"])
 def get_weather():
     """
     GET /api/weather?lat=31.5&lon=74.3
 
-    Returns current conditions plus a same-hour rain check, which is what
-    powers the "10 minutes before rain" alert. Open-Meteo doesn't give
-    minute-level rain timing on the free tier, so we treat "rain expected
-    in the current hour" as the trigger — good enough for a live demo.
+    Returns current conditions, actual solar irradiance (GHI), plus a
+    same-hour rain check, which is what powers the "10 minutes before
+    rain" alert. Open-Meteo doesn't give minute-level rain timing on the
+    free tier, so we treat "rain expected in the current hour" as the
+    trigger — good enough for a live demo.
     """
     lat = request.args.get("lat", type=float)
     lon = request.args.get("lon", type=float)
@@ -50,8 +69,9 @@ def get_weather():
     params = {
         "latitude": lat,
         "longitude": lon,
-        "current": "temperature_2m,is_day,weather_code,cloud_cover,precipitation",
+        "current": "temperature_2m,is_day,weather_code,cloud_cover,precipitation,shortwave_radiation",
         "hourly": "precipitation_probability",
+        "daily": "sunset",
         "forecast_days": 1,
         "timezone": "auto",
     }
@@ -65,17 +85,26 @@ def get_weather():
 
     current = data.get("current", {})
     condition = classify_condition(current.get("weather_code", -1))
+    ghi = current.get("shortwave_radiation")
+    solar_strength = classify_solar_strength(ghi)
 
     # first hourly probability entry ~= "this hour" rain chance
     hourly_probs = data.get("hourly", {}).get("precipitation_probability", [])
     rain_soon_pct = hourly_probs[0] if hourly_probs else 0
 
+    sunset_list = data.get("daily", {}).get("sunset", [])
+    sunset_iso = sunset_list[0] if sunset_list else None
+    hours_until_sunset = _hours_until_sunset(current.get("time"), sunset_iso)
+
     return jsonify({
         "temperature_f": _c_to_f(current.get("temperature_2m")),
         "is_day": bool(current.get("is_day")),
-        "condition": condition,          # clear | partly_cloudy | cloudy | rain | storm | ...
+        "condition": condition,                    # clear | partly_cloudy | cloudy | rain | storm | ...
         "cloud_cover_pct": current.get("cloud_cover"),
-        "rain_soon_pct": rain_soon_pct,  # chance of rain in the current hour
+        "solar_irradiance_wm2": ghi,                # actual GHI reading, W/m^2
+        "solar_strength": solar_strength,           # strong | moderate | weak | none — drives power routing
+        "rain_soon_pct": rain_soon_pct,             # chance of rain in the current hour
+        "hours_until_sunset": hours_until_sunset,   # daylight left - drives solar runtime estimates
     })
 
 
@@ -83,3 +112,21 @@ def _c_to_f(celsius):
     if celsius is None:
         return None
     return round((celsius * 9 / 5) + 32, 1)
+
+
+def _hours_until_sunset(current_iso, sunset_iso):
+    """
+    Both timestamps come back in the location's own local time (timezone=auto),
+    so a plain subtraction works — no timezone math needed.
+    """
+    if not current_iso or not sunset_iso:
+        return None
+    from datetime import datetime
+    fmt = "%Y-%m-%dT%H:%M"
+    try:
+        now = datetime.strptime(current_iso[:16], fmt)
+        sunset = datetime.strptime(sunset_iso[:16], fmt)
+    except ValueError:
+        return None
+    diff_hours = (sunset - now).total_seconds() / 3600
+    return round(diff_hours, 2) if diff_hours > 0 else 0

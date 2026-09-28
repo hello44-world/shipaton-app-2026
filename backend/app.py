@@ -9,14 +9,21 @@ from api.weather import weather_bp
 from api.power_router import power_bp
 from api.bill import bill_bp
 from api.appliances import appliances_bp
+from api.auth import auth_bp
+from api.chatbot import chat_bp
+from models.database import init_db
 
 app = Flask(__name__)
 CORS(app)  # allows the Expo app (running on a different port/device) to call this API
+
+init_db()
 
 app.register_blueprint(weather_bp, url_prefix="/api/weather")
 app.register_blueprint(power_bp, url_prefix="/api/power")
 app.register_blueprint(bill_bp, url_prefix="/api/bill")
 app.register_blueprint(appliances_bp, url_prefix="/api/appliances")
+app.register_blueprint(auth_bp, url_prefix="/api/auth")
+app.register_blueprint(chat_bp, url_prefix="/api/chat")
 
 
 @app.route("/api/health")
